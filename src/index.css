@@ -87,3 +87,33 @@ button:focus-visible {
   box-shadow: 0 0 25px rgba(236, 72, 153, 0.3); /* Pembe neon parlama */
   border-color: #ec4899;
 }
+
+
+/* src/index.css EN ALTINA EKLE */
+
+/* Genel Kontrol: 768px altındaki ekranlar için */
+@media (max-width: 768px) {
+    
+    /* 1. ANA LAYOUT DÜZELTME (Metrik Paneli Alt Tarafa İndir) */
+    .responsive-main-row {
+        grid-template-columns: 1fr !important; /* 2 sütundan 1 sütuna geç */
+        gap: 20px !important;
+    }
+
+    /* 2. AKSİYON KARTLARI DÜZELTME (Kartları Alt Alta Yığ) */
+    .responsive-actions-grid {
+        grid-template-columns: 1fr !important; /* 2 sütundan 1 sütuna geç */
+    }
+
+    /* 3. Genel Kontrol: İç boşluğu azalt */
+    #game-wrapper {
+        padding: 12px !important; 
+        max-width: 100% !important;
+    }
+    
+    /* 4. Kaynak Kutusu: Daha kompakt yap */
+    .resource-box {
+        flex-direction: column; 
+        align-items: flex-start;
+    }
+}

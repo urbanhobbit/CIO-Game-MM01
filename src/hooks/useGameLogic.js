@@ -1,4 +1,3 @@
-// src/hooks/useGameLogic.js
 import { useState, useMemo, useEffect } from "react";
 import parentScenarios from "../data/scenarios_parent.json";
 import childScenarios from "../data/scenarios_child.json";
@@ -60,7 +59,6 @@ export default function useGameLogic() {
     setSelectedIds(new Set(allScenarioIds));
   };
 
-  // Mod değişince sıfırla
   useEffect(() => {
     const freshIds = new Set(Object.keys(scenariosData));
     setSelectedIds(freshIds);
@@ -87,58 +85,23 @@ export default function useGameLogic() {
   };
 
   const calculateEffects = (action, scope, duration, safeguards) => {
-    // Sabitler utils'e taşınmadıysa config'den veya hook içinden okuyabilirsin.
-    // Burada "balance" objesi import edildiği için onu kullanıyoruz.
-    const {
-      THREAT_SEVERITY,
-      RANDOM_FACTOR_RANGE,
-      SCOPE_MULTIPLIERS,
-      DURATION_MULTIPLIERS,
-      SAFEGUARD_QUALITY_PER_ITEM,
-      TRUST_BOOST_FOR_TRANSPARENCY,
-      FATIGUE_PER_DURATION,
-    } = balance;
+    const { THREAT_SEVERITY, RANDOM_FACTOR_RANGE, SCOPE_MULTIPLIERS, DURATION_MULTIPLIERS, SAFEGUARD_QUALITY_PER_ITEM, TRUST_BOOST_FOR_TRANSPARENCY, FATIGUE_PER_DURATION } = balance;
 
-    const randomFactor =
-      Math.random() * (RANDOM_FACTOR_RANGE[1] - RANDOM_FACTOR_RANGE[0]) +
-      RANDOM_FACTOR_RANGE[0];
+    const randomFactor = Math.random() * (RANDOM_FACTOR_RANGE[1] - RANDOM_FACTOR_RANGE[0]) + RANDOM_FACTOR_RANGE[0];
 
     const scopeMultiplier = SCOPE_MULTIPLIERS[scope];
     const durationMultiplier = DURATION_MULTIPLIERS[duration];
-    const safeguardQuality =
-      (safeguards?.length || 0) * SAFEGUARD_QUALITY_PER_ITEM;
+    const safeguardQuality = (safeguards?.length || 0) * SAFEGUARD_QUALITY_PER_ITEM;
 
-    let securityChange =
-      (THREAT_SEVERITY * action.security_effect) / 100 -
-      action.side_effect_risk * randomFactor * 20;
+    let securityChange = (THREAT_SEVERITY * action.security_effect) / 100 - action.side_effect_risk * randomFactor * 20;
+    let freedomCost = action.freedom_cost * scopeMultiplier * durationMultiplier * (1 - safeguardQuality * action.safeguard_reduction);
+    let publicTrustChange = (safeguards?.includes("transparency") ? TRUST_BOOST_FOR_TRANSPARENCY : 0) - freedomCost * 0.5;
+    let resilienceChange = action.speed === "slow" ? (action.security_effect * safeguardQuality) / 2 : 5;
+    let fatigueChange = DURATION_MULTIPLIERS[duration] * FATIGUE_PER_DURATION[scope];
 
-    let freedomCost =
-      action.freedom_cost *
-      scopeMultiplier *
-      durationMultiplier *
-      (1 - safeguardQuality * action.safeguard_reduction);
+    if (securityChange > 15) addNews(`📈 GÜVENLİK ARTTI: '${action.name}' sonrası tehdit seviyesi düştü.`);
 
-    let publicTrustChange =
-      (safeguards?.includes("transparency") ? TRUST_BOOST_FOR_TRANSPARENCY : 0) -
-      freedomCost * 0.5;
-
-    let resilienceChange =
-      action.speed === "slow"
-        ? (action.security_effect * safeguardQuality) / 2
-        : 5;
-
-    let fatigueChange =
-      DURATION_MULTIPLIERS[duration] * FATIGUE_PER_DURATION[scope];
-
-    if (securityChange > 15)
-      addNews(`📈 GÜVENLİK ARTTI: '${action.name}' sonrası tehdit seviyesi düştü.`);
-    if (freedomCost > 15)
-      addNews("📉 ÖZGÜRLÜK TARTIŞMASI: Yeni kısıtlamalar tepki çekti.");
-
-    const counter_factual =
-      action.id === "A"
-        ? "B veya C ile benzer güvenliği daha düşük özgürlük maliyetiyle sağlayabilirdiniz."
-        : "Bu seçim görece orantılı; kullandığınız güvenceler fark yarattı.";
+    const counter_factual = action.id === "A" ? "B veya C ile benzer güvenliği daha düşük özgürlük maliyetiyle sağlayabilirdiniz." : "Bu seçim görece orantılı; kullandığınız güvenceler fark yarattı.";
 
     return {
       metrics: {
@@ -164,32 +127,19 @@ export default function useGameLogic() {
         resilience: clamp(metrics.resilience - 10),
         fatigue: clamp(metrics.fatigue + 15),
       },
-      budget,
-      hr,
-      counter_factual: "Kaynakları daha iyi yönetebilirdiniz.",
+      budget, hr, counter_factual: "Kaynakları daha iyi yönetebilirdiniz.",
     };
   };
 
   const handleApplyDecision = (opts) => {
-    const { action, scope, duration, safeguards } = opts;
     setMetricsBefore({ ...metrics });
-    const res = calculateEffects(action, scope, duration, safeguards);
+    const res = calculateEffects(opts.action, opts.scope, opts.duration, opts.safeguards);
     
-    const resultObj = {
-      ...res,
-      actionId: action.id,
-      actionName: action.name,
-      scope,
-      duration,
-      safeguards,
-      skipped: false,
-    };
-    
-    setResults(resultObj);
+    setResults({ ...res, actionId: opts.action.id, actionName: opts.action.name, scope: opts.scope, duration: opts.duration, safeguards: opts.safeguards, skipped: false });
     setMetrics(res.metrics);
     setBudget(res.budget);
     setHr(res.hr);
-    setDecision({ actionId: action.id, scope, duration, safeguards, skipped: false });
+    setDecision({ actionId: opts.action.id, scope: opts.scope, duration: opts.duration, safeguards: opts.safeguards, skipped: false });
     setScreen("immediate");
   };
 
@@ -220,14 +170,7 @@ export default function useGameLogic() {
   };
 
   return {
-    state: {
-      mode, isKids, screen, metrics, budget, hr, news, history,
-      currentScenario, currentIndex, crisisSequence,
-      results, metricsBefore, allScenarioIds, selectedIds, scenariosData
-    },
-    actions: {
-      setMode, setScreen, setSelectedIds,
-      resetGame, startGame, handleApplyDecision, handleSkipTurn, goNextCrisisOrEnd
-    }
+    state: { mode, isKids, screen, metrics, budget, hr, news, history, currentScenario, currentIndex, crisisSequence, results, metricsBefore, allScenarioIds, selectedIds, scenariosData },
+    actions: { setMode, setScreen, setSelectedIds, resetGame, startGame, handleApplyDecision, handleSkipTurn, goNextCrisisOrEnd }
   };
 }
